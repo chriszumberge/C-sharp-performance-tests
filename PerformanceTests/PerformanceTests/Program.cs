@@ -12,15 +12,15 @@ namespace PerformanceTests
     {
         const int NUM_TEST_OPS = 1000000;
         const int PRINT_LENGTH = 13;
-        const int PCT_PRNT_LENGTH = 13;
+        const int PCT_PRNT_LENGTH = 11;
 
         static int startPrintWidth = Console.BufferWidth - PRINT_LENGTH - PCT_PRNT_LENGTH;
         static void Main(string[] args)
         {
-            Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 20);
+            Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 2000);
             Console.WriteLine();
 
-            Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 50);
+            Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 1);
             Console.WriteLine();
 
             Test_ChunkyCalls_vs_ChattyCalls(NUM_TEST_OPS * 50);
@@ -37,6 +37,8 @@ namespace PerformanceTests
 
         private static void Test_ThrowException_Vs_HandlingCommonConditions(int numOps)
         {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
+
             Stopwatch watch = new Stopwatch();
             watch.Start();
             for (int i = 0; i < numOps; i++)
@@ -48,7 +50,7 @@ namespace PerformanceTests
                 catch (Exception ex) { }
             }
             watch.Stop();
-            TimeSpan exceptionTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Throwing Exception", watch.Elapsed));
             watch.Reset();
 
             watch.Start();
@@ -61,7 +63,7 @@ namespace PerformanceTests
                 catch (Exception ex) { }
             }
             watch.Stop();
-            TimeSpan handleInsideTryCatchTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Handling Common Case Inside Try/Catch", watch.Elapsed));
             watch.Reset();
 
             watch.Start();
@@ -70,14 +72,15 @@ namespace PerformanceTests
                 var o = MethodReturnsNull();
             }
             watch.Stop();
-            TimeSpan commonCaseTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Handling Common Case", watch.Elapsed));
             watch.Reset();
 
-            TimeSpan baselineTime = new List<TimeSpan> { exceptionTime, commonCaseTime, handleInsideTryCatchTime }.Min();
-
-            WriteTimingString("Throwing Exception", numOps, exceptionTime, baselineTime);
-            WriteTimingString("Handling Common Case", numOps, commonCaseTime, baselineTime);
-            WriteTimingString("Handling Common Case Inside Try/Catch", numOps, handleInsideTryCatchTime, baselineTime);
+            TimeSpan baselineTime = results.Select(x => x.Item2).Min();
+            results = results.OrderByDescending(x => x.Item2).ToList();
+            foreach (var result in results)
+            {
+                WriteTimingString(result.Item1, numOps, result.Item2, baselineTime);
+            }
         }
 
         private static object MethodThrowsException()
@@ -93,6 +96,7 @@ namespace PerformanceTests
         private static void Test_ShortCircuitFileReading_LengthChecks(int numOps)
         {
             string filePath = Path.Combine(new FileInfo(System.Reflection.Assembly.GetEntryAssembly().Location).Directory.ToString(), "EmptyFile.txt");
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
 
             using (var fileStream = new FileStream(filePath, FileMode.Open))
             {
@@ -106,7 +110,7 @@ namespace PerformanceTests
                     b = fileStream.ReadByte();
                 }
                 watch.Stop();
-                TimeSpan readingEmptyTime = watch.Elapsed;
+                results.Add(new Tuple<string, TimeSpan>("Reading empty filestream", watch.Elapsed));
                 watch.Reset();
 
                 watch.Start();
@@ -119,17 +123,21 @@ namespace PerformanceTests
                     }
                 }
                 watch.Stop();
-                TimeSpan checkLengthTime = watch.Elapsed;
+                results.Add(new Tuple<string, TimeSpan>("Checking length before", watch.Elapsed));
+                watch.Reset();
 
-                TimeSpan baselineTime = new List<TimeSpan> { readingEmptyTime, checkLengthTime }.Max();
-
-                WriteTimingString("Reading empty filestream", numOps, readingEmptyTime, baselineTime);
-                WriteTimingString("Checking length before", numOps, checkLengthTime, baselineTime);
+                TimeSpan baselineTime = results.Select(x => x.Item2).Max();
+                results = results.OrderByDescending(x => x.Item2).ToList();
+                foreach (var result in results)
+                {
+                    WriteTimingString(result.Item1, numOps, result.Item2, baselineTime);
+                }
             }
         }
 
         private static void Test_ChunkyCalls_vs_ChattyCalls(int numOps)
         {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
             int i = Helpers.GetInt();
             float f = Helpers.GetFloat();
             string s = Helpers.GetString();
@@ -144,7 +152,7 @@ namespace PerformanceTests
                 o.SetTestString(s);
             }
             watch.Stop();
-            TimeSpan chattyTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Chatty Calls", watch.Elapsed));
             watch.Reset();
 
             watch.Start();
@@ -154,17 +162,20 @@ namespace PerformanceTests
                 o.SetValues(i, f, s);
             }
             watch.Stop();
-            TimeSpan chunkyTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Chunky Calls", watch.Elapsed));
             watch.Reset();
 
-            TimeSpan baselineTime = new List<TimeSpan> { chattyTime, chunkyTime }.Max();
-
-            WriteTimingString("Chatty Calls", numOps, chattyTime, baselineTime);
-            WriteTimingString("Chunky Calls", numOps, chunkyTime, baselineTime);
+            TimeSpan baselineTime = results.Select(x => x.Item2).Max();
+            results = results.OrderByDescending(x => x.Item2).ToList();
+            foreach (var result in results)
+            {
+                WriteTimingString(result.Item1, numOps, result.Item2, baselineTime);
+            }
         }
 
         private static void Test_Object_Initialization_Methods(int numOps)
         {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
             int i = Helpers.GetInt();
             float f = Helpers.GetFloat();
             string s = Helpers.GetString();
@@ -183,7 +194,7 @@ namespace PerformanceTests
                 };
             }
             watch.Stop();
-            TimeSpan autoPropertiesInCtorTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Set autoproperties with ctor", watch.Elapsed));
             watch.Reset();
 
             // Set auto properties after construction
@@ -196,7 +207,7 @@ namespace PerformanceTests
                 o.AutoTestString = s;
             }
             watch.Stop();
-            TimeSpan autoPropertiesAfterCtorTime = watch.Elapsed;            
+            results.Add(new Tuple<string, TimeSpan>("Set autoproperties after ctor", watch.Elapsed));
             watch.Reset();
 
             // Set public properties in constructor
@@ -211,7 +222,7 @@ namespace PerformanceTests
                 };
             }
             watch.Stop();
-            TimeSpan setPropertiesInCtorTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Set public properties with ctor", watch.Elapsed));
             watch.Reset();
 
             // Set public properties after construction
@@ -224,7 +235,7 @@ namespace PerformanceTests
                 o.TestString = s;
             }
             watch.Stop();
-            TimeSpan setPropertiesAfterCtorTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Set public properties after ctor", watch.Elapsed));
             watch.Reset();
 
             // Set properties using setter methods
@@ -237,7 +248,7 @@ namespace PerformanceTests
                 o.SetTestString(s);
             }
             watch.Stop();
-            TimeSpan setterMethodsTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Set properties with setter methods", watch.Elapsed));
             watch.Reset();
 
             // Set properties in constructor
@@ -247,22 +258,20 @@ namespace PerformanceTests
                 var o = new TestClass(i, f, s);
             }
             watch.Stop();
-            TimeSpan ctorArgTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Set properties as constructor args", watch.Elapsed));
             watch.Reset();
 
-            TimeSpan baselineTime = new List<TimeSpan> { autoPropertiesInCtorTime, autoPropertiesAfterCtorTime, setPropertiesInCtorTime,
-                                                         setPropertiesAfterCtorTime, setterMethodsTime, ctorArgTime}.Max();
-
-            WriteTimingString("Set autoproperties with ctor", numOps, autoPropertiesInCtorTime, baselineTime);
-            WriteTimingString("Set autoproperties after ctor", numOps, autoPropertiesAfterCtorTime, baselineTime);
-            WriteTimingString("Set public properties with ctor", numOps, setPropertiesInCtorTime, baselineTime);
-            WriteTimingString("Set public properties after ctor", numOps, setPropertiesAfterCtorTime, baselineTime);
-            WriteTimingString("Set properties with setter methods", numOps, setterMethodsTime, baselineTime);
-            WriteTimingString("Set properties as constructor args", numOps, ctorArgTime, baselineTime);
+            TimeSpan baselineTime = results.Select(x => x.Item2).Max();
+            results = results.OrderByDescending(x => x.Item2).ToList();
+            foreach (var result in results)
+            {
+                WriteTimingString(result.Item1, numOps, result.Item2, baselineTime);
+            }
         }
 
         private static void Test_Design_with_ValueTypes(int numOps)
         {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
             double d = 3.14;
             Stopwatch watch = new Stopwatch();
 
@@ -272,7 +281,7 @@ namespace PerformanceTests
                 var test = new SimpleTestClass(d);
             }
             watch.Stop();
-            TimeSpan classTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Using classes", watch.Elapsed));
             watch.Reset();
 
             watch.Start();
@@ -281,13 +290,15 @@ namespace PerformanceTests
                 var test2 = new SimpleTestStruct(d);
             }
             watch.Stop();
-            TimeSpan structTime = watch.Elapsed;
+            results.Add(new Tuple<string, TimeSpan>("Using structs", watch.Elapsed));
             watch.Reset();
 
-            TimeSpan baselineTime = new List<TimeSpan> { classTime, structTime }.Max();
-
-            WriteTimingString("Using classes", numOps, classTime, baselineTime);
-            WriteTimingString("Using structs", numOps, structTime, baselineTime);
+            TimeSpan baselineTime = results.Select(x => x.Item2).Max();
+            results = results.OrderByDescending(x => x.Item2).ToList();
+            foreach (var result in results)
+            {
+                WriteTimingString(result.Item1, numOps, result.Item2, baselineTime);
+            }
         }
 
         private static void WriteTimingString(string prefix, int numOps, TimeSpan time, TimeSpan? baselineTime = null)
@@ -299,7 +310,7 @@ namespace PerformanceTests
             if (baselineTime.HasValue)
             {
                 double percent = (double)time.Ticks / (double)baselineTime.Value.Ticks;
-                string pctString = $" {Math.Round(percent, 4):0.0000}x";
+                string pctString = $" {Math.Round(percent, 2):0.00}x";
 
                 int x = 0;
                 for (int i = Console.BufferWidth; i > Console.BufferWidth - PCT_PRNT_LENGTH; i--)
