@@ -17,7 +17,7 @@ namespace PerformanceTests
         static int startPrintWidth = Console.BufferWidth - PRINT_LENGTH - PCT_PRNT_LENGTH;
         static void Main(string[] args)
         {
-            Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 2000);
+            Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 200);
             Console.WriteLine();
 
             Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 1);
@@ -30,6 +30,9 @@ namespace PerformanceTests
             Console.WriteLine();
 
             Test_Design_with_ValueTypes(NUM_TEST_OPS * 50);
+            Console.WriteLine();
+
+            Test_Add_vs_AddRange(NUM_TEST_OPS * 1);
             Console.WriteLine();
 
             Console.ReadLine();
@@ -276,7 +279,7 @@ namespace PerformanceTests
             Stopwatch watch = new Stopwatch();
 
             watch.Start();
-            for (int x= 0; x < numOps; x++)
+            for (int x = 0; x < numOps; x++)
             {
                 var test = new SimpleTestClass(d);
             }
@@ -293,6 +296,179 @@ namespace PerformanceTests
             results.Add(new Tuple<string, TimeSpan>("Using structs", watch.Elapsed));
             watch.Reset();
 
+            ShowResults(numOps, results);
+        }
+
+        private static void Test_Add_vs_AddRange(int numOps)
+        {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
+            Stopwatch watch = new Stopwatch();
+
+            int tinyListSize = 10;
+            int smallListSize = 100;
+            int mediumListSize = 1000;
+            int largeListSize = 10000;
+            int hugeListSize = 10000000;
+
+            List<int> tinyList = new List<int>();
+            List<int> smallList = new List<int>();
+            List<int> mediumList = new List<int>();
+            List<int> largeList = new List<int>();
+            List<int> hugeList = new List<int>();
+            for (int i = 0; i < hugeListSize; i++)
+            {
+                if (i < tinyListSize)
+                {
+                    tinyList.Add(i);
+                }
+                if (i < smallListSize)
+                {
+                    smallList.Add(i);
+                }
+                if (i < mediumListSize)
+                {
+                    mediumList.Add(i);
+                }
+                if (i < largeListSize)
+                {
+                    largeList.Add(i);
+                }
+                hugeList.Add(i);
+            }
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                for (int i = 0; i < tinyListSize; i++)
+                {
+                    l.Add(i);
+                }
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Iterative add, {tinyListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                l.AddRange(tinyList);
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Add range, {tinyListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
+            results.Clear();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                for (int i = 0; i < smallListSize; i++)
+                {
+                    l.Add(i);
+                }
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Iterative add, {smallListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                l.AddRange(smallList);
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Add range, {smallListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
+            results.Clear();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                for (int i = 0; i < mediumListSize; i++)
+                {
+                    l.Add(i);
+                }
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Iterative add, {mediumListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                l.AddRange(mediumList);
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Add range, {mediumListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
+            results.Clear();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                for (int i = 0; i < largeListSize; i++)
+                {
+                    l.Add(i);
+                }
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Iterative add, {largeListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                l.AddRange(largeList);
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Add range, {largeListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
+            results.Clear();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                for (int i = 0; i < hugeListSize; i++)
+                {
+                    l.Add(i);
+                }
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Iterative add, {hugeListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                List<int> l = new List<int>();
+                l.AddRange(hugeList);
+            }
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Add range, {hugeListSize} list", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
+            results.Clear();
+        }
+
+        private static void ShowResults(int numOps, IList<Tuple<string, TimeSpan>> results)
+        {
             TimeSpan baselineTime = results.Select(x => x.Item2).Max();
             results = results.OrderByDescending(x => x.Item2).ToList();
             foreach (var result in results)
