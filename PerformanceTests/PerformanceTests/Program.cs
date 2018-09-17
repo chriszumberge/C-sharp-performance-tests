@@ -17,22 +17,25 @@ namespace PerformanceTests
         static int startPrintWidth = Console.BufferWidth - PRINT_LENGTH - PCT_PRNT_LENGTH;
         static void Main(string[] args)
         {
-            Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 200);
-            Console.WriteLine();
+            //Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 200);
+            //Console.WriteLine();
 
-            Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 1);
-            Console.WriteLine();
+            //Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 1);
+            //Console.WriteLine();
 
-            Test_ChunkyCalls_vs_ChattyCalls(NUM_TEST_OPS * 50);
-            Console.WriteLine();
+            //Test_ChunkyCalls_vs_ChattyCalls(NUM_TEST_OPS * 50);
+            //Console.WriteLine();
 
-            Test_Object_Initialization_Methods(NUM_TEST_OPS * 50);
-            Console.WriteLine();
+            //Test_Object_Initialization_Methods(NUM_TEST_OPS * 50);
+            //Console.WriteLine();
 
-            Test_Design_with_ValueTypes(NUM_TEST_OPS * 50);
-            Console.WriteLine();
+            //Test_Design_with_ValueTypes(NUM_TEST_OPS * 50);
+            //Console.WriteLine();
 
-            Test_Add_vs_AddRange(NUM_TEST_OPS * 1);
+            //Test_Add_vs_AddRange(NUM_TEST_OPS * 1);
+            //Console.WriteLine();
+
+            Test_Foreach_vs_For(NUM_TEST_OPS * 1);
             Console.WriteLine();
 
             Console.ReadLine();
@@ -465,6 +468,37 @@ namespace PerformanceTests
 
             ShowResults(numOps, results);
             results.Clear();
+        }
+
+        private static void Test_Foreach_vs_For(int numOps)
+        {
+            IList<Tuple<string, TimeSpan>> results = new List<Tuple<string, TimeSpan>>();
+            Stopwatch watch = new Stopwatch();
+            string s = "monkeys!";
+            int dummy = 0;
+            // make the string long
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(s);
+            for (int i = 0; i < 1000000; i++)
+                sb.Append(s);
+            s = sb.ToString();
+            ////
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+                foreach (char c in s) dummy++;
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"Foreach", watch.Elapsed));
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+                for (int i = 0; i < s.Length; i++)
+                    dummy++;
+            watch.Stop();
+            results.Add(new Tuple<string, TimeSpan>($"For", watch.Elapsed));
+            watch.Reset();
+
+            ShowResults(numOps, results);
         }
 
         private static void ShowResults(int numOps, IList<Tuple<string, TimeSpan>> results)
