@@ -11,22 +11,83 @@ namespace PerformanceTests
     class Program
     {
         const int NUM_TEST_OPS = 1000000;
+        const int PRINT_LENGTH = 13;
+        const int PCT_PRNT_LENGTH = 13;
 
+        static int startPrintWidth = Console.BufferWidth - PRINT_LENGTH - PCT_PRNT_LENGTH;
         static void Main(string[] args)
         {
             Test_ThrowException_Vs_HandlingCommonConditions(NUM_TEST_OPS / 20);
             Console.WriteLine();
 
-            Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS);
+            Test_ShortCircuitFileReading_LengthChecks(NUM_TEST_OPS * 50);
             Console.WriteLine();
 
-            Test_ChunkyCalls_vs_ChattyCalls(NUM_TEST_OPS);
+            Test_ChunkyCalls_vs_ChattyCalls(NUM_TEST_OPS * 50);
             Console.WriteLine();
 
-            Test_Object_Initialization_Methods(NUM_TEST_OPS);
+            Test_Object_Initialization_Methods(NUM_TEST_OPS * 50);
+            Console.WriteLine();
+
+            Test_Design_with_ValueTypes(NUM_TEST_OPS * 50);
             Console.WriteLine();
 
             Console.ReadLine();
+        }
+
+        private static void Test_ThrowException_Vs_HandlingCommonConditions(int numOps)
+        {
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            for (int i = 0; i < numOps; i++)
+            {
+                try
+                {
+                    var o = MethodThrowsException();
+                }
+                catch (Exception ex) { }
+            }
+            watch.Stop();
+            TimeSpan exceptionTime = watch.Elapsed;
+            watch.Reset();
+
+            watch.Start();
+            for (int i = 0; i < numOps; i++)
+            {
+                try
+                {
+                    var o = MethodReturnsNull();
+                }
+                catch (Exception ex) { }
+            }
+            watch.Stop();
+            TimeSpan handleInsideTryCatchTime = watch.Elapsed;
+            watch.Reset();
+
+            watch.Start();
+            for (int i = 0; i < numOps; i++)
+            {
+                var o = MethodReturnsNull();
+            }
+            watch.Stop();
+            TimeSpan commonCaseTime = watch.Elapsed;
+            watch.Reset();
+
+            TimeSpan baselineTime = new List<TimeSpan> { exceptionTime, commonCaseTime, handleInsideTryCatchTime }.Min();
+
+            WriteTimingString("Throwing Exception", numOps, exceptionTime, baselineTime);
+            WriteTimingString("Handling Common Case", numOps, commonCaseTime, baselineTime);
+            WriteTimingString("Handling Common Case Inside Try/Catch", numOps, handleInsideTryCatchTime, baselineTime);
+        }
+
+        private static object MethodThrowsException()
+        {
+            throw new Exception();
+        }
+
+        private static object MethodReturnsNull()
+        {
+            return null;
         }
 
         private static void Test_ShortCircuitFileReading_LengthChecks(int numOps)
@@ -45,7 +106,7 @@ namespace PerformanceTests
                     b = fileStream.ReadByte();
                 }
                 watch.Stop();
-                Console.WriteLine($"Reading empty filestream {numOps}: {watch.Elapsed.ToString()}ms");
+                TimeSpan readingEmptyTime = watch.Elapsed;
                 watch.Reset();
 
                 watch.Start();
@@ -58,57 +119,13 @@ namespace PerformanceTests
                     }
                 }
                 watch.Stop();
-                Console.WriteLine($"Checking length before reading empty filestream {numOps}: {watch.Elapsed.ToString()}ms");
+                TimeSpan checkLengthTime = watch.Elapsed;
+
+                TimeSpan baselineTime = new List<TimeSpan> { readingEmptyTime, checkLengthTime }.Max();
+
+                WriteTimingString("Reading empty filestream", numOps, readingEmptyTime, baselineTime);
+                WriteTimingString("Checking length before", numOps, checkLengthTime, baselineTime);
             }
-        }
-
-        private static void Test_ThrowException_Vs_HandlingCommonConditions(int numOps)
-        {
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
-            for (int i = 0; i < numOps; i++)
-            {
-                try
-                {
-                    var o = MethodThrowsException();
-                }
-                catch (Exception ex) { }
-            }
-            watch.Stop();
-            Console.WriteLine($"Throwing Exception over {numOps}: {watch.Elapsed.ToString()}ms");
-            watch.Reset();
-
-            watch.Start();
-            for (int i = 0; i < numOps; i++)
-            {
-                var o = MethodReturnsNull();
-            }
-            watch.Stop();
-            Console.WriteLine($"Handling Common Case over {numOps}: {watch.Elapsed.ToString()}ms");
-            watch.Reset();
-
-            watch.Start();
-            for (int i = 0; i < numOps; i++)
-            {
-                try
-                {
-                    var o = MethodReturnsNull();
-                }
-                catch (Exception ex) { }
-            }
-            watch.Stop();
-            Console.WriteLine($"Handling Common Case Inside Try/Catch over {numOps}: {watch.Elapsed.ToString()}ms");
-            watch.Reset();
-        }
-
-        private static object MethodThrowsException()
-        {
-            throw new Exception();
-        }
-
-        private static object MethodReturnsNull()
-        {
-            return null;
         }
 
         private static void Test_ChunkyCalls_vs_ChattyCalls(int numOps)
@@ -127,7 +144,7 @@ namespace PerformanceTests
                 o.SetTestString(s);
             }
             watch.Stop();
-            Console.WriteLine($"Chatty Calls over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan chattyTime = watch.Elapsed;
             watch.Reset();
 
             watch.Start();
@@ -137,8 +154,13 @@ namespace PerformanceTests
                 o.SetValues(i, f, s);
             }
             watch.Stop();
-            Console.WriteLine($"Chunky Calls over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan chunkyTime = watch.Elapsed;
             watch.Reset();
+
+            TimeSpan baselineTime = new List<TimeSpan> { chattyTime, chunkyTime }.Max();
+
+            WriteTimingString("Chatty Calls", numOps, chattyTime, baselineTime);
+            WriteTimingString("Chunky Calls", numOps, chunkyTime, baselineTime);
         }
 
         private static void Test_Object_Initialization_Methods(int numOps)
@@ -161,7 +183,7 @@ namespace PerformanceTests
                 };
             }
             watch.Stop();
-            Console.WriteLine($"Set autoproperties with constructor over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan autoPropertiesInCtorTime = watch.Elapsed;
             watch.Reset();
 
             // Set auto properties after construction
@@ -174,7 +196,7 @@ namespace PerformanceTests
                 o.AutoTestString = s;
             }
             watch.Stop();
-            Console.WriteLine($"Set autoproperties after constructor over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan autoPropertiesAfterCtorTime = watch.Elapsed;            
             watch.Reset();
 
             // Set public properties in constructor
@@ -189,7 +211,7 @@ namespace PerformanceTests
                 };
             }
             watch.Stop();
-            Console.WriteLine($"Set public properties with constructor over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan setPropertiesInCtorTime = watch.Elapsed;
             watch.Reset();
 
             // Set public properties after construction
@@ -202,7 +224,7 @@ namespace PerformanceTests
                 o.TestString = s;
             }
             watch.Stop();
-            Console.WriteLine($"Set public properties after constructor over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan setPropertiesAfterCtorTime = watch.Elapsed;
             watch.Reset();
 
             // Set properties using setter methods
@@ -215,7 +237,7 @@ namespace PerformanceTests
                 o.SetTestString(s);
             }
             watch.Stop();
-            Console.WriteLine($"Set properties with setter methods over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan setterMethodsTime = watch.Elapsed;
             watch.Reset();
 
             // Set properties in constructor
@@ -225,8 +247,93 @@ namespace PerformanceTests
                 var o = new TestClass(i, f, s);
             }
             watch.Stop();
-            Console.WriteLine($"Set properties in constructor over {numOps}: {watch.Elapsed.ToString()}ms");
+            TimeSpan ctorArgTime = watch.Elapsed;
             watch.Reset();
+
+            TimeSpan baselineTime = new List<TimeSpan> { autoPropertiesInCtorTime, autoPropertiesAfterCtorTime, setPropertiesInCtorTime,
+                                                         setPropertiesAfterCtorTime, setterMethodsTime, ctorArgTime}.Max();
+
+            WriteTimingString("Set autoproperties with ctor", numOps, autoPropertiesInCtorTime, baselineTime);
+            WriteTimingString("Set autoproperties after ctor", numOps, autoPropertiesAfterCtorTime, baselineTime);
+            WriteTimingString("Set public properties with ctor", numOps, setPropertiesInCtorTime, baselineTime);
+            WriteTimingString("Set public properties after ctor", numOps, setPropertiesAfterCtorTime, baselineTime);
+            WriteTimingString("Set properties with setter methods", numOps, setterMethodsTime, baselineTime);
+            WriteTimingString("Set properties as constructor args", numOps, ctorArgTime, baselineTime);
+        }
+
+        private static void Test_Design_with_ValueTypes(int numOps)
+        {
+            double d = 3.14;
+            Stopwatch watch = new Stopwatch();
+
+            watch.Start();
+            for (int x= 0; x < numOps; x++)
+            {
+                var test = new SimpleTestClass(d);
+            }
+            watch.Stop();
+            TimeSpan classTime = watch.Elapsed;
+            watch.Reset();
+
+            watch.Start();
+            for (int x = 0; x < numOps; x++)
+            {
+                var test2 = new SimpleTestStruct(d);
+            }
+            watch.Stop();
+            TimeSpan structTime = watch.Elapsed;
+            watch.Reset();
+
+            TimeSpan baselineTime = new List<TimeSpan> { classTime, structTime }.Max();
+
+            WriteTimingString("Using classes", numOps, classTime, baselineTime);
+            WriteTimingString("Using structs", numOps, structTime, baselineTime);
+        }
+
+        private static void WriteTimingString(string prefix, int numOps, TimeSpan time, TimeSpan? baselineTime = null)
+        {
+            Console.Write($"{prefix} over {numOps} ops:");
+            Console.SetCursorPosition(startPrintWidth, Console.CursorTop);
+            Console.Write($" {time.ToString().Substring(3)}");
+
+            if (baselineTime.HasValue)
+            {
+                double percent = (double)time.Ticks / (double)baselineTime.Value.Ticks;
+                string pctString = $" {Math.Round(percent, 4):0.0000}x";
+
+                int x = 0;
+                for (int i = Console.BufferWidth; i > Console.BufferWidth - PCT_PRNT_LENGTH; i--)
+                {
+                    Console.SetCursorPosition(i - 2, Console.CursorTop);
+                    if (x < pctString.Length)
+                    {
+                        Console.Write(pctString[pctString.Length - 1 - x]);
+                    }
+                    else
+                    {
+                        Console.Write(" ");
+                    }
+                    x++;
+                }
+                //if (percent < 10)
+                //{
+                //    Console.Write($" {Math.Round(percent, 4):0.0000}x");
+                //}
+                //else if (percent < 100)
+                //{
+                //    Console.Write($" {Math.Round(percent, 4):0.000}x");
+                //}
+                //else if (percent < 1000)
+                //{
+                //    Console.Write($" {Math.Round(percent, 4):0.00}x");
+                //}
+                //else
+                //{
+                //    Console.Write($" {percent.ToEngineering()}x");
+                //}
+            }
+
+            Console.WriteLine();
         }
     }
 
@@ -278,6 +385,39 @@ namespace PerformanceTests
             testInt = i;
             testFloat = f;
             testString = s;
+        }
+    }
+
+    public class SimpleTestClass
+    {
+        public double y;
+        public SimpleTestClass(double arg)
+        {
+            this.y = arg;
+        }
+    }
+
+    public struct SimpleTestStruct
+    {
+        public double y;
+        public SimpleTestStruct(double arg)
+        {
+            this.y = arg;
+        }
+    }
+
+    public static class FormatExtensions
+    {
+        public static string ToEngineering(this double value)
+        {
+            int exp = (int)(Math.Floor(Math.Log10(value) / 3.0) * 3.0);
+            double newValue = value * Math.Pow(10.0, -exp);
+            if (newValue >= 1000.0)
+            {
+                newValue = newValue / 1000.0;
+                exp = exp + 3;
+            }
+            return string.Format("{0:##0}e{1}", newValue, exp);
         }
     }
 }
